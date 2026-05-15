@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: todo-backend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 4000
+        env:
+        - name: PORT
+          value: "4000"
+        - name: MONGO_URI
+          value: mongodb://mongodb:27017/todoapp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 4000
+    targetPort: 4000
+  type: ClusterIP
