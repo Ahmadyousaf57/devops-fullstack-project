@@ -1,0 +1,90 @@
+# ┌──────────────────────────────────────────────────────────┐
+# │  Frontend Deployment + NodePort Service                 │
+# │                                                        │
+# │  WHAT IS NodePort?                                     │
+# │  NodePort exposes the service on a static port          │
+# │  (30000–32767) on EVERY node in the cluster. This      │
+# │  is how users access the frontend from their browser.  │
+# │                                                        │
+# │  SERVICE TYPE COMPARISON:                              │
+# │  ┌──────────────┬─────────────────────────────────┐    │
+# │  │ ClusterIP    │ Internal only (backend, DB)     │    │
+# │  │ NodePort     │ External via port on each node  │    │
+# │  │ LoadBalancer │ External via cloud load balancer│    │
+# │  │ Ingress      │ External via domain routing     │    │
+# │  └──────────────┴─────────────────────────────────┘    │
+# └──────────────────────────────────────────────────────────┘
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: todo-app
+  labels:
+    app: frontend
+    tier: ui
+spec:
+  replicas: 2                 # 2 replicas for high availability
+  selector:
+    matchLabels:
+      app: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: ui
+    spec:
+      containers:
+      - name: frontend
+        image: todo-frontend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+          name: http
+        # ── Resource Limits ──────────────────────────────
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        # ── Liveness Probe ───────────────────────────────
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 3
+        # ── Readiness Probe ──────────────────────────────
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+---
+# ── NodePort Service ───────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: todo-app
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+  - port: 80              # Service port (internal)
+    targetPort: 80         # Container port
+    nodePort: 30080        # External port (access via localhost:30080)
+    name: http
+  type: NodePort           # Accessible from outside the cluster

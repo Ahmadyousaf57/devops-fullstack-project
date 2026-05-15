@@ -1,17 +1,46 @@
-version: '3.8'
+# ┌──────────────────────────────────────────────────────────┐
+# │  Docker Compose — Multi-Container Orchestration         │
+# │                                                        │
+# │  WHAT IS DOCKER COMPOSE?                               │
+# │  A tool to define and run multi-container apps.        │
+# │  Instead of running 3 separate `docker run` commands   │
+# │  for MongoDB, Backend, and Frontend, you define them   │
+# │  all in this ONE file and run `docker-compose up`.     │
+# │                                                        │
+# │  NETWORKING:                                           │
+# │  Docker Compose creates a virtual network. Containers  │
+# │  can reach each other by SERVICE NAME (e.g., the       │
+# │  backend connects to "mongodb" not "localhost").       │
+# │                                                        │
+# │  DEPENDS_ON:                                           │
+# │  Controls startup order. Backend waits for MongoDB.    │
+# │  Frontend waits for Backend.                           │
+# └──────────────────────────────────────────────────────────┘
 
 services:
+  # ── MongoDB Database ─────────────────────────────────────
+  # The data layer — stores all todo items
   mongodb:
-    image: mongo:7
+    image: mongo:7                      # Official MongoDB 7 image
     container_name: todo-mongodb
-    restart: unless-stopped
+    restart: unless-stopped             # Auto-restart unless manually stopped
     ports:
-      - "27017:27017"
+      - "27017:27017"                   # Host:Container port mapping
     volumes:
-      - mongodb_data:/data/db
+      - mongodb_data:/data/db           # Persist data across container restarts
     environment:
-      MONGO_INITDB_DATABASE: todoapp
+      MONGO_INITDB_DATABASE: todoapp    # Create this database on first start
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - todo-network
 
+  # ── Backend API ──────────────────────────────────────────
+  # The logic layer — handles business logic & database queries
   backend:
     build:
       context: ./backend
@@ -22,10 +51,23 @@ services:
       - "4000:4000"
     environment:
       - PORT=4000
-      - MONGO_URI=mongodb://mongodb:27017/todoapp
+      - MONGO_URI=mongodb://mongodb:27017/todoapp  # "mongodb" = service name above
+      - NODE_ENV=production
+      - CORS_ORIGIN=*
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy      # Wait for MongoDB health check to pass
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - todo-network
 
+  # ── Frontend UI ──────────────────────────────────────────
+  # The presentation layer — React app served via Nginx
   frontend:
     build:
       context: ./client
@@ -33,9 +75,23 @@ services:
     container_name: todo-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3000:80"                       # Access at http://localhost:3000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy      # Wait for Backend health check
+    networks:
+      - todo-network
 
+# ── Named Volumes ──────────────────────────────────────────
+# Docker manages these volumes. Data persists even after
+# `docker-compose down` (use `down -v` to delete volumes too)
 volumes:
   mongodb_data:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────
+# Custom bridge network — all services can communicate
+# by service name (DNS resolution handled by Docker)
+networks:
+  todo-network:
+    driver: bridge

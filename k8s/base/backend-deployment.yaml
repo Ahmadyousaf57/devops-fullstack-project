@@ -1,0 +1,100 @@
+# ┌──────────────────────────────────────────────────────────┐
+# │  Backend Deployment + ClusterIP Service                 │
+# │                                                        │
+# │  WHAT IS ClusterIP?                                    │
+# │  ClusterIP is the DEFAULT Service type. It gives the   │
+# │  service an internal IP that ONLY other pods inside    │
+# │  the cluster can reach. The backend doesn't need to    │
+# │  be directly accessible from outside — the frontend    │
+# │  Nginx proxy forwards API requests to it.              │
+# │                                                        │
+# │  LIVENESS vs READINESS PROBES:                         │
+# │  - Liveness: "Is the app alive?"                       │
+# │    → If NO → K8s RESTARTS the pod                      │
+# │  - Readiness: "Is the app ready to handle traffic?"    │
+# │    → If NO → K8s stops sending traffic (but no restart)│
+# │                                                        │
+# │  Example: App might be alive but not ready if it       │
+# │  hasn't connected to the database yet.                 │
+# └──────────────────────────────────────────────────────────┘
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: todo-app
+  labels:
+    app: backend
+    tier: api
+spec:
+  replicas: 2                 # Run 2 copies for high availability
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: RollingUpdate       # Zero-downtime deployments
+    rollingUpdate:
+      maxSurge: 1             # Max 1 extra pod during update
+      maxUnavailable: 0       # Never have 0 pods available
+  template:
+    metadata:
+      labels:
+        app: backend
+        tier: api
+    spec:
+      containers:
+      - name: backend
+        image: todo-backend:latest
+        imagePullPolicy: Never    # Use local images (change for cloud)
+        ports:
+        - containerPort: 4000
+          name: http
+        # ── Environment Variables from ConfigMap ─────────
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        # ── Resource Limits ──────────────────────────────
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+        # ── Liveness Probe ───────────────────────────────
+        # "Is the Node.js process alive?"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4000
+          initialDelaySeconds: 15    # Wait 15s before first check
+          periodSeconds: 20          # Check every 20s
+          timeoutSeconds: 3
+          failureThreshold: 3        # Restart after 3 failures
+        # ── Readiness Probe ──────────────────────────────
+        # "Is the app connected to MongoDB?"
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 4000
+          initialDelaySeconds: 5     # Check sooner than liveness
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+---
+# ── ClusterIP Service ──────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: todo-app
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 4000
+    targetPort: 4000
+    name: http
+  type: ClusterIP             # Internal-only access
