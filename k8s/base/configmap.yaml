@@ -1,0 +1,28 @@
+# ┌─────────────────────────────────────────────────────┐
+# │  Kubernetes ConfigMap                               │
+# │                                                    │
+# │  WHAT IS A CONFIGMAP?                              │
+# │  A way to store non-sensitive configuration        │
+# │  (database URLs, feature flags, etc.) OUTSIDE      │
+# │  your Docker image. This means you can change      │
+# │  config without rebuilding the image.              │
+# │                                                    │
+# │  For SENSITIVE data (passwords, API keys),         │
+# │  use Kubernetes Secrets instead.                   │
+# └─────────────────────────────────────────────────────┘
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: todo-app
+  labels:
+    app: backend
+data:
+  # These values are injected as environment variables
+  # into the backend pods (see backend-deployment.yaml)
+  PORT: "4000"
+  MONGO_URI: "mongodb://mongodb.todo-app.svc.cluster.local:27017/todoapp"
+  NODE_ENV: "production"
+  CORS_ORIGIN: "*"
+  LOG_LEVEL: "combined"

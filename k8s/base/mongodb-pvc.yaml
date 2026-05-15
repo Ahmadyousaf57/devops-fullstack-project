@@ -1,0 +1,32 @@
+# ┌─────────────────────────────────────────────────────┐
+# │  PersistentVolumeClaim (PVC) for MongoDB           │
+# │                                                    │
+# │  WHAT IS A PVC?                                    │
+# │  Pods are ephemeral — when they restart, all       │
+# │  data inside them is LOST. A PVC requests          │
+# │  persistent storage that survives pod restarts.    │
+# │                                                    │
+# │  Think of it like a USB drive that you plug        │
+# │  into different computers (pods). The data         │
+# │  stays on the USB drive even if you unplug it.     │
+# │                                                    │
+# │  HOW IT WORKS:                                     │
+# │  1. PVC = "I need 1GB of storage"                  │
+# │  2. K8s finds (or creates) a PersistentVolume      │
+# │  3. PV is bound to this PVC                        │
+# │  4. Pod mounts the PVC at /data/db                 │
+# └─────────────────────────────────────────────────────┘
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: todo-app
+  labels:
+    app: mongodb
+spec:
+  accessModes:
+    - ReadWriteOnce       # Only one pod can write at a time
+  resources:
+    requests:
+      storage: 1Gi        # Request 1 gigabyte of storage

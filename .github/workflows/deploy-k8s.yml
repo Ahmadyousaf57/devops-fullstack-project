@@ -28,24 +28,26 @@ jobs:
     
     - name: Update image tags in manifests
       run: |
-        sed -i "s|todo-backend:latest|${{ secrets.DOCKER_HUB_USERNAME }}/todo-backend:main-${{ github.sha }}|g" k8s/backend-deployment.yaml
-        sed -i "s|todo-frontend:latest|${{ secrets.DOCKER_HUB_USERNAME }}/todo-frontend:main-${{ github.sha }}|g" k8s/frontend-deployment.yaml
-        sed -i "s|imagePullPolicy: Never|imagePullPolicy: Always|g" k8s/backend-deployment.yaml
-        sed -i "s|imagePullPolicy: Never|imagePullPolicy: Always|g" k8s/frontend-deployment.yaml
+        sed -i "s|todo-backend:latest|${{ secrets.DOCKER_HUB_USERNAME }}/todo-backend:main-${{ github.sha }}|g" k8s/base/backend-deployment.yaml
+        sed -i "s|todo-frontend:latest|${{ secrets.DOCKER_HUB_USERNAME }}/todo-frontend:main-${{ github.sha }}|g" k8s/base/frontend-deployment.yaml
+        sed -i "s|imagePullPolicy: Never|imagePullPolicy: Always|g" k8s/base/backend-deployment.yaml
+        sed -i "s|imagePullPolicy: Never|imagePullPolicy: Always|g" k8s/base/frontend-deployment.yaml
     
     - name: Deploy to Kubernetes
       run: |
-        kubectl apply -f k8s/mongodb-pvc.yaml
-        kubectl apply -f k8s/mongodb-deployment.yaml
-        kubectl apply -f k8s/backend-deployment.yaml
-        kubectl apply -f k8s/frontend-deployment.yaml
+        kubectl apply -f k8s/base/namespace.yaml
+        kubectl apply -f k8s/base/configmap.yaml
+        kubectl apply -f k8s/base/mongodb-pvc.yaml
+        kubectl apply -f k8s/base/mongodb-deployment.yaml
+        kubectl apply -f k8s/base/backend-deployment.yaml
+        kubectl apply -f k8s/base/frontend-deployment.yaml
     
     - name: Wait for deployment to complete
       run: |
-        kubectl rollout status deployment/backend -w --timeout=5m
-        kubectl rollout status deployment/frontend -w --timeout=5m
+        kubectl rollout status deployment/backend -n todo-app -w --timeout=5m
+        kubectl rollout status deployment/frontend -n todo-app -w --timeout=5m
     
     - name: Verify deployment
       run: |
-        kubectl get pods
-        kubectl get services
+        kubectl get pods -n todo-app
+        kubectl get services -n todo-app

@@ -1,0 +1,19 @@
+# ┌─────────────────────────────────────────────────────┐
+# │  Kubernetes Namespace                               │
+# │                                                    │
+# │  WHAT IS A NAMESPACE?                              │
+# │  A virtual cluster inside your K8s cluster.        │
+# │  It isolates resources so different projects       │
+# │  don't interfere with each other.                  │
+# │                                                    │
+# │  Think of it like folders on your computer —       │
+# │  each project gets its own folder (namespace).     │
+# └─────────────────────────────────────────────────────┘
+
+apiVersion: v1          # API version for Namespace resources
+kind: Namespace         # Resource type
+metadata:
+  name: todo-app        # Name of the namespace
+  labels:
+    app: todo-app       # Labels for easy filtering
+    managed-by: kubectl

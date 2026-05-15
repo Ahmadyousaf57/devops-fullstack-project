@@ -1,0 +1,85 @@
+# ┌──────────────────────────────────────────────────────────┐
+# │  MongoDB Deployment + Headless Service                  │
+# │                                                        │
+# │  WHAT IS A DEPLOYMENT?                                 │
+# │  A Deployment tells Kubernetes:                        │
+# │  "Run X copies (replicas) of this container, and       │
+# │   if any crash, automatically restart them."           │
+# │                                                        │
+# │  WHAT IS A SERVICE?                                    │
+# │  Pods get random IP addresses that change on restart.  │
+# │  A Service gives pods a stable DNS name so other       │
+# │  pods can find them. For example, the backend can      │
+# │  always reach MongoDB at "mongodb:27017" even if       │
+# │  the MongoDB pod restarts with a new IP.               │
+# │                                                        │
+# │  HEADLESS SERVICE (clusterIP: None):                   │
+# │  A normal Service load-balances across pods. A         │
+# │  headless Service returns the pod IP directly.         │
+# │  Used for databases because we want a stable,          │
+# │  direct connection to ONE specific pod.                │
+# └──────────────────────────────────────────────────────────┘
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: todo-app
+  labels:
+    app: mongodb
+    tier: database
+spec:
+  replicas: 1               # Only 1 replica for database (data consistency)
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        tier: database
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:7
+        ports:
+        - containerPort: 27017
+          name: mongodb
+        env:
+        - name: MONGO_INITDB_DATABASE
+          value: todoapp
+        # ── Resource Limits ──────────────────────────────
+        # Prevent MongoDB from consuming all cluster resources
+        resources:
+          requests:            # Minimum guaranteed resources
+            cpu: 100m          # 100 millicores (0.1 CPU)
+            memory: 256Mi      # 256 megabytes RAM
+          limits:              # Maximum allowed resources
+            cpu: 500m          # 500 millicores (0.5 CPU)
+            memory: 512Mi      # 512 megabytes RAM
+        # ── Volume Mount ─────────────────────────────────
+        # Mount the PVC at /data/db (where MongoDB stores data)
+        volumeMounts:
+        - name: mongodb-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongodb-storage
+        persistentVolumeClaim:
+          claimName: mongodb-pvc
+---
+# ── Headless Service ───────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: todo-app
+  labels:
+    app: mongodb
+spec:
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+    name: mongodb
+  clusterIP: None           # Headless — direct pod connection
