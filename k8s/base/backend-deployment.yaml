@@ -44,8 +44,8 @@ spec:
     spec:
       containers:
       - name: backend
-        image: todo-backend:latest
-        imagePullPolicy: Never    # Use local images (change for cloud)
+        image: ahmadyousaf56/todo-backend:latest
+        imagePullPolicy: IfNotPresent    # Use local images (change for cloud)
         ports:
         - containerPort: 4000
           name: http

@@ -61,5 +61,22 @@ pipeline {
                 }
             }
         }
+        stage('Deploy') {
+            steps {
+                sh 'kubectl apply -f k8s/base/namespace.yaml'
+                sh 'kubectl apply -f k8s/base/'
+                sh 'kubectl set image deployment/backend backend=$BACKEND_IMAGE:$BUILD_NUMBER -n todo-app'
+                sh 'kubectl set image deployment/frontend frontend=$CLIENT_IMAGE:$BUILD_NUMBER -n todo-app'
+                sh 'kubectl rollout status deployment/backend -n todo-app --timeout=300s'
+                sh 'kubectl rollout status deployment/frontend -n todo-app --timeout=300s'
+            }
+        }
+        stage('Verify') {
+            steps {
+                sh 'kubectl get pods -n todo-app'
+                sh 'kubectl get deployment backend -n todo-app -o jsonpath="{.spec.template.spec.containers[0].image}"; echo'
+                sh 'kubectl get deployment frontend -n todo-app -o jsonpath="{.spec.template.spec.containers[0].image}"; echo'
+            }
+        }
     }
 }

@@ -41,8 +41,8 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: todo-frontend:latest
-        imagePullPolicy: Never
+        image: ahmadyousaf56/todo-client:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
           name: http
