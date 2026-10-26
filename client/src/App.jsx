@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api'
+const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 function App() {
   const [todos, setTodos] = useState([])
@@ -17,7 +17,7 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/api/todos`)
       const data = await res.json()
-      setTodos(data)
+      setTodos(data.data || [])
     } catch (err) {
       console.error('fetchTodos', err)
     }
