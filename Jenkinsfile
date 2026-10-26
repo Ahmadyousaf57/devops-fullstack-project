@@ -20,5 +20,15 @@ pipeline {
                 sh 'docker images | grep todo'
             }
         }
+        stage('Push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+                    sh 'echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin'
+                    sh 'docker push $BACKEND_IMAGE:$BUILD_NUMBER'
+                    sh 'docker push $CLIENT_IMAGE:$BUILD_NUMBER'
+                    sh 'docker logout'
+                }
+            }
+        }
     }
 }
