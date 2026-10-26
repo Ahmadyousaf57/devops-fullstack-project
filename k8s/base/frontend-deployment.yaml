@@ -85,6 +85,6 @@ spec:
   ports:
   - port: 80              # Service port (internal)
     targetPort: 80         # Container port
-    nodePort: 30080        # External port (access via localhost:30080)
+    nodePort: 30081        # External port (access via localhost:30081)
     name: http
   type: NodePort           # Accessible from outside the cluster
